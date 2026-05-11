@@ -17,9 +17,8 @@ jobs:
 
       - name: "PASS | correct SHA-256 matches artifact"
         run: |
-          gateway \
-            -file gateway/testdata/artifact.txt \
-            -sha256 1ff1e7529d4c1960db06639b5f78f707ea07833b502749d2d763bd7eccee1df9
+          HASH=$(sha256sum gateway/testdata/artifact.txt | awk '{print $1}')
+          gateway -file gateway/testdata/artifact.txt -sha256 "$HASH"
 
       - name: "FAIL | wrong SHA-256 is rejected"
         continue-on-error: true
