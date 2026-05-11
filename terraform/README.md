@@ -2,6 +2,10 @@
 
 Terraform modules provisioning the AWS resources the gateway writes validated artifacts to.
 
+## Architecture
+
+![Dev Architecture](./diagrams/dev-architecture.svg)
+
 ## Structure
 
 ```
