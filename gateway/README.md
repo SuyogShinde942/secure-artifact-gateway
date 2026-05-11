@@ -43,19 +43,38 @@ Exits `0` on success, `1` on failure. Pipelines use this exit code as a hard gat
 ### GitHub Actions
 
 ```yaml
-- name: Security gate
-  uses: docker://suyog942/secure-gateway:1.0.0
-  with:
-    args: >-
-      -file   clientapis
-      -sha256 "$(cat clientapis.sha256)"
-      -config deploy/config.yaml
-      -rules  rules.json
+env:
+  VERSION: "1.5.4"
+  ARTIFACT: "clientapis-1.5.4.tgz"
+
+steps:
+  - name: Build and package
+    run: |
+      go build -o clientapis .
+      tar -czf clientapis-${{ env.VERSION }}.tgz clientapis
+      shasum -a 256 ${{ env.ARTIFACT }} | awk '{print $1}' > ${{ env.ARTIFACT }}.sha256
+
+  - name: Security gate
+    uses: docker://suyog942/secure-gateway:1.0.0
+    with:
+      args: >-
+        -file   ${{ env.ARTIFACT }}
+        -sha256 "$(cat ${{ env.ARTIFACT }}.sha256)"
+        -config deploy/config.yaml
+        -rules  rules.json
+
+  - name: Promote validated artifact
+    run: |
+      aws s3 cp ${{ env.ARTIFACT }} s3://my-bucket/validated/${{ env.VERSION }}/${{ env.ARTIFACT }}
 ```
 
 ### GitLab CI
 
 ```yaml
+variables:
+  VERSION: "1.5.4"
+  ARTIFACT: "clientapis-1.5.4.tgz"
+
 stages:
   - build
   - gate
@@ -65,23 +84,24 @@ build:
   stage: build
   script:
     - go build -o clientapis .
-    - shasum -a 256 clientapis | awk '{print $1}' > clientapis.sha256
+    - tar -czf $ARTIFACT clientapis
+    - shasum -a 256 $ARTIFACT | awk '{print $1}' > $ARTIFACT.sha256
   artifacts:
-    paths: [clientapis, clientapis.sha256]
+    paths: [$ARTIFACT, "$ARTIFACT.sha256"]
 
 security-gate:
   stage: gate
   image: suyog942/secure-gateway:1.0.0
   script:
     - gateway
-        -file   clientapis
-        -sha256 "$(cat clientapis.sha256)"
+        -file   $ARTIFACT
+        -sha256 "$(cat $ARTIFACT.sha256)"
         -config deploy/config.yaml
         -rules  rules.json
 
 promote:
   stage: promote
   script:
-    - aws s3 cp clientapis s3://my-bucket/validated/
+    - aws s3 cp $ARTIFACT s3://my-bucket/validated/$VERSION/$ARTIFACT
   needs: [security-gate]
 ```
