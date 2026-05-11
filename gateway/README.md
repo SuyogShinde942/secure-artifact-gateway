@@ -47,8 +47,8 @@ Exits `0` on success, `1` on failure. Pipelines use this exit code as a hard gat
   uses: docker://suyog942/secure-gateway:1.0.0
   with:
     args: >-
-      -file   my-service
-      -sha256 "$(cat my-service.sha256)"
+      -file   clientapis
+      -sha256 "$(cat clientapis.sha256)"
       -config deploy/config.yaml
       -rules  rules.json
 ```
@@ -64,24 +64,24 @@ stages:
 build:
   stage: build
   script:
-    - go build -o my-service .
-    - shasum -a 256 my-service | awk '{print $1}' > my-service.sha256
+    - go build -o clientapis .
+    - shasum -a 256 clientapis | awk '{print $1}' > clientapis.sha256
   artifacts:
-    paths: [my-service, my-service.sha256]
+    paths: [clientapis, clientapis.sha256]
 
 security-gate:
   stage: gate
   image: suyog942/secure-gateway:1.0.0
   script:
     - gateway
-        -file   my-service
-        -sha256 "$(cat my-service.sha256)"
+        -file   clientapis
+        -sha256 "$(cat clientapis.sha256)"
         -config deploy/config.yaml
         -rules  rules.json
 
 promote:
   stage: promote
   script:
-    - aws s3 cp my-service s3://my-bucket/validated/
+    - aws s3 cp clientapis s3://my-bucket/validated/
   needs: [security-gate]
 ```
