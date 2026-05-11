@@ -1,0 +1,68 @@
+name: gateway-demo
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  integrity-checks:
+    name: Integrity Checks
+    runs-on: ubuntu-latest
+    container:
+      image: suyog942/secure-gateway:1.0.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "PASS | correct SHA-256 matches artifact"
+        run: |
+          gateway \
+            -file gateway/testdata/artifact.txt \
+            -sha256 1ff1e7529d4c1960db06639b5f78f707ea07833b502749d2d763bd7eccee1df9
+
+      - name: "FAIL | wrong SHA-256 is rejected"
+        continue-on-error: true
+        run: |
+          gateway \
+            -file gateway/testdata/artifact.txt \
+            -sha256 0000000000000000000000000000000000000000000000000000000000000000
+
+  secrets-scan:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    container:
+      image: suyog942/secure-gateway:1.0.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "PASS | clean config — no secrets found"
+        run: |
+          gateway \
+            -config gateway/testdata/config_clean.yaml \
+            -rules gateway/rules.json
+
+      - name: "FAIL | private key detected"
+        continue-on-error: true
+        run: |
+          printf 'credentials:\n  key: |\n    -----BEGIN RSA PRIVATE KEY-----\n    MIIEXAMPLEKEY\n    -----END RSA PRIVATE KEY-----\n' > /tmp/pem.yaml
+          gateway -config /tmp/pem.yaml -rules gateway/rules.json
+
+      - name: "FAIL | AWS access key detected"
+        continue-on-error: true
+        run: |
+          printf 'aws:\n  access_key_id: AKIAIOSFODNN7EXAMPLE\n' > /tmp/aws.yaml
+          gateway -config /tmp/aws.yaml -rules gateway/rules.json
+
+      - name: "FAIL | password in config detected"
+        continue-on-error: true
+        run: |
+          printf 'database:\n  password: supersecretpassword123\n' > /tmp/pwd.yaml
+          gateway -config /tmp/pwd.yaml -rules gateway/rules.json
+
+      - name: "FAIL | dirty config — all patterns detected"
+        continue-on-error: true
+        run: |
+          gateway \
+            -config gateway/testdata/config_dirty.yaml \
+            -rules gateway/rules.json
