@@ -1,0 +1,25 @@
+# binary
+/gateway/gateway
+
+# build output
+*.exe
+*.out
+
+# Go test cache and coverage
+*.test
+*.prof
+coverage.out
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# macOS
+.DS_Store
+
+# editor
+.idea/
+.vscode/
+*.swp
+learn.md

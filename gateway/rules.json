@@ -1,0 +1,32 @@
+{
+  "rules": [
+    {
+      "name": "pem_private_key",
+      "pattern": "-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"
+    },
+    {
+      "name": "aws_access_key_id",
+      "pattern": "AKIA[0-9A-Z]{16}"
+    },
+    {
+      "name": "aws_secret_access_key",
+      "pattern": "(?i)aws.{0,15}secret.{0,15}key\\s*[:=]\\s*\\S{20,}"
+    },
+    {
+      "name": "password_assignment",
+      "pattern": "(?i)(password|passwd|pwd)\\s*[:=]\\s*\\S{8,}"
+    },
+    {
+      "name": "api_key_or_token",
+      "pattern": "(?i)(api_key|api_token|auth_token)\\s*[:=]\\s*\\S{8,}"
+    },
+    {
+      "name": "generic_secret",
+      "pattern": "(?i)(secret|private_key)\\s*[:=]\\s*\\S{8,}"
+    },
+    {
+      "name": "github_pat",
+      "pattern": "ghp_[A-Za-z0-9]{36}"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+server:
+  host: localhost
+  port: 8080
+
+# PEM private key
+tls_key: "-----BEGIN RSA PRIVATE KEY-----"
+
+# AWS credentials
+aws_access_key_id: AKIAIOSFODNN7EXAMPLE
+aws_secret_key: aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+# Password
+database:
+  password: supersecret123
+
+# API token
+api_token: abcdefghijklmnop
+
+# Generic secret
+private_key: my-very-secret-value
+
+# GitHub PAT
+github_token: ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij
