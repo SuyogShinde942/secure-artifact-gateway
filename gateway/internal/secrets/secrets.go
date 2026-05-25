@@ -7,7 +7,10 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
+	"sync"
 )
+
+const ruleWorkers = 5
 
 type Finding struct {
 	Line int
@@ -19,15 +22,15 @@ type compiledRule struct {
 	pattern *regexp.Regexp
 }
 
-func Check(configPath, rulesPath string) ([]Finding, error) {
-	rules, err := loadRules(rulesPath)
+func Scan(configPath, rulesPath string) ([]Finding, error) {
+	rules, err := parseRules(rulesPath)
 	if err != nil {
 		return nil, err
 	}
-	return scan(configPath, rules)
+	return matchLines(configPath, rules)
 }
 
-func loadRules(path string) ([]compiledRule, error) {
+func parseRules(path string) ([]compiledRule, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read rules file: %w", err)
@@ -43,18 +46,47 @@ func loadRules(path string) ([]compiledRule, error) {
 		return nil, fmt.Errorf("invalid JSON in rules file: %w", err)
 	}
 
-	var rules []compiledRule
-	for _, r := range parsed.Rules {
-		re, err := regexp.Compile(r.Pattern)
+	type job struct {
+		idx     int
+		name    string
+		pattern string
+	}
+
+	rules := make([]compiledRule, len(parsed.Rules))
+	errs := make([]error, len(parsed.Rules))
+	jobs := make(chan job, len(parsed.Rules))
+
+	var wg sync.WaitGroup
+	for range ruleWorkers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := range jobs {
+				re, err := regexp.Compile(j.pattern)
+				if err != nil {
+					errs[j.idx] = fmt.Errorf("invalid pattern for rule %q: %w", j.name, err)
+					continue
+				}
+				rules[j.idx] = compiledRule{name: j.name, pattern: re}
+			}
+		}()
+	}
+
+	for i, r := range parsed.Rules {
+		jobs <- job{idx: i, name: r.Name, pattern: r.Pattern}
+	}
+	close(jobs)
+	wg.Wait()
+
+	for _, err := range errs {
 		if err != nil {
-			return nil, fmt.Errorf("invalid pattern for rule %q: %w", r.Name, err)
+			return nil, err
 		}
-		rules = append(rules, compiledRule{name: r.Name, pattern: re})
 	}
 	return rules, nil
 }
 
-func scan(configPath string, rules []compiledRule) ([]Finding, error) {
+func matchLines(configPath string, rules []compiledRule) ([]Finding, error) {
 	file, err := os.Open(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open config: %w", err)
@@ -79,8 +111,8 @@ func scan(configPath string, rules []compiledRule) ([]Finding, error) {
 	return findings, sc.Err()
 }
 
-func Run(configPath, rulesPath string) error {
-	findings, err := Check(configPath, rulesPath)
+func Enforce(configPath, rulesPath string) error {
+	findings, err := Scan(configPath, rulesPath)
 	if err != nil {
 		return err
 	}
