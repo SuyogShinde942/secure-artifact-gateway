@@ -25,7 +25,7 @@ func main() {
 		}
 	}
 	if cfg.ConfigPath != "" {
-		if err := secrets.Run(cfg.ConfigPath, cfg.RulesPath); err != nil {
+		if err := secrets.Enforce(cfg.ConfigPath, cfg.RulesPath); err != nil {
 			slog.Error("secrets scan failed", "error", err)
 			os.Exit(1)
 		}
